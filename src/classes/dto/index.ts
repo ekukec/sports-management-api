@@ -1,0 +1,6 @@
+export * from './create-class.dto'
+export * from './create-schedule.dto'
+export * from './update-schedule.dto'
+export * from './update-class.dto'
+export * from './filter-classes.dto'
+export * from './class-response.dto'

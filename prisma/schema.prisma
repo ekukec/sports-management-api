@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email       String       @unique @db.VarChar(255)
+  password    String       @db.VarChar(255)
+  firstName   String?      @map("first_name") @db.VarChar(100)
+  lastName    String?      @map("last_name") @db.VarChar(100)
+  role        UserRole     @default(USER)
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  enrollments Enrollment[]
+
+  @@index([email], map: "idx_users_email")
+  @@index([role], map: "idx_users_role")
+  @@map("users")
+}
+
+model Sport {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String       @unique @db.VarChar(100)
+  description  String?
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sportClasses SportClass[]
+
+  @@index([name], map: "idx_sports_name")
+  @@map("sports")
+}
+
+model SportClass {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sportId         String          @map("sport_id") @db.Uuid
+  name            String          @db.VarChar(255)
+  description     String?
+  durationMinutes Int             @map("duration_minutes")
+  instructorName  String?         @map("instructor_name") @db.VarChar(255)
+  location        String?         @db.VarChar(255)
+  isActive        Boolean?        @default(true) @map("is_active")
+  createdAt       DateTime?       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime?       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  classSchedules  ClassSchedule[]
+  enrollments     Enrollment[]
+  sport           Sport           @relation(fields: [sportId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([sportId, name], map: "unique_sport_class_name")
+  @@index([isActive], map: "idx_sport_classes_active")
+  @@index([sportId], map: "idx_sport_classes_sport_id")
+  @@map("sport_classes")
+}
+
+model ClassSchedule {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  classId    String     @map("class_id") @db.Uuid
+  dayOfWeek  DayOfWeek  @map("day_of_week")
+  startTime  DateTime   @map("start_time") @db.Time(6)
+  endTime    DateTime   @map("end_time") @db.Time(6)
+  isActive   Boolean?   @default(true) @map("is_active")
+  createdAt  DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime?  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sportClass SportClass @relation(fields: [classId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([classId, dayOfWeek, startTime], map: "unique_class_schedule")
+  @@index([classId], map: "idx_class_schedules_class_id")
+  @@index([dayOfWeek], map: "idx_class_schedules_day")
+  @@map("class_schedules")
+}
+
+model Enrollment {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  classId        String           @map("class_id") @db.Uuid
+  status         EnrollmentStatus @default(PENDING)
+  enrollmentDate DateTime         @map("enrollment_date") @db.Date
+  startDate      DateTime?        @map("start_date") @db.Date
+  endDate        DateTime?        @map("end_date") @db.Date
+  notes          String?
+  createdAt      DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sportClass     SportClass       @relation(fields: [classId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, classId, enrollmentDate], map: "unique_user_class_enrollment")
+  @@index([classId], map: "idx_enrollments_class_id")
+  @@index([enrollmentDate, startDate, endDate], map: "idx_enrollments_dates")
+  @@index([status], map: "idx_enrollments_status")
+  @@index([userId], map: "idx_enrollments_user_id")
+  @@map("enrollments")
+}
+
+enum DayOfWeek {
+  MONDAY    @map("monday")
+  TUESDAY   @map("tuesday")
+  WEDNESDAY @map("wednesday")
+  THURSDAY  @map("thursday")
+  FRIDAY    @map("friday")
+  SATURDAY  @map("saturday")
+  SUNDAY    @map("sunday")
+
+  @@map("day_of_week")
+}
+
+enum EnrollmentStatus {
+  PENDING   @map("pending")
+  APPROVED  @map("approved")
+  REJECTED  @map("rejected")
+  CANCELLED @map("cancelled")
+
+  @@map("enrollment_status")
+}
+
+enum UserRole {
+  USER  @map("user")
+  ADMIN @map("admin")
+
+  @@map("user_role")
+}
